@@ -1,0 +1,37 @@
+{attribute 'qualified_only'}
+VAR_GLOBAL
+	// Входы (симуляция датчиков)
+	temp : REAL := 20.0; //начальная температура (буду менять вручную для теста, т.к нет физ.датчика)
+	
+	// Уставки нагревателя
+	heatTemp_On : REAL := 21.0; //вкл.нагрев при <= 21C
+	heatTemp_Off : REAL := 25.0; //выкл. нагрев при >= 25C
+	
+	// Уставки вентилятора
+	holdTemp_On : REAL := 35.0; //вкл.вентилятор при >= 35C
+	holdTemp_Off : REAL := 31.0; //выкл.вентилятор при <= 31C
+	
+	// Начальное состояние выходов дискретных(исполнительные механизмы)
+	heater : BOOL := FALSE; // нагреватель (начинаем с выключенного)
+	hold : BOOL := FALSE; // вентилятор (начинаем с выключенного)
+END_VAR
+
+PROGRAM PLC_PRG (*гистерезис нужен для того, чтобы не было дребезга реле (например при необходимой t в теплице 25C. 
+Нужно будет включать и выключать обогреватель каждый раз. если t >= 25 или t < 25 (ЭТО МОЖЕТ ПРОИСХОДИТЬ ОЧЕНЬ ЧАСТО)
+Гистерезис - это зона нечувствительности*)
+
+//1.Управление нагревателем с гистерезисом
+IF GVL_Hysteresis.temp <= GVL_Hysteresis.heatTemp_On THEN
+	GVL_Hysteresis.heater := TRUE; //если нач.t <= 21C, включаем нагреватель
+ELSIF GVL_Hysteresis.temp >= GVL_Hysteresis.heatTemp_Off THEN
+	GVL_Hysteresis.heater := FALSE; // если нач.t >= 25C, выключаем
+//МЕЖДУ 21 И 25С НИЧЕГО НЕ ДЕЛАЕМ
+END_IF
+
+//2.Управление вентилятором
+IF GVL_Hysteresis.temp >= GVL_Hysteresis.holdTemp_On THEN
+	GVL_Hysteresis.hold := TRUE; //если нач.t >= 35C, включить
+ELSIF GVL_Hysteresis.temp <= GVL_Hysteresis.holdTemp_Off THEN
+	GVL_Hysteresis.hold := FALSE; //если нач.t <= 31C, выключить
+//МЕЖДУ 31 И 35С НИЧЕГО НЕ ДЕЛАЕМ
+END_IF
